@@ -1,0 +1,64 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+)
+
+// models the data received from the API
+type Post struct {
+	Id     int    `json:"id"`
+	Title  string `json:"title"`
+	Body   string `json:"body"`
+	UserId int    `json:"userId"`
+}
+
+func main() {
+	// HTTP endpoint
+	posturl := "https://sign-test.comnica.com/api"
+
+	// JSON body
+	body := []byte(`{
+		"title": "Post title",
+		"body": "Post description",
+		"userId": 1
+	}`)
+
+	// Create a HTTP post request
+	r, err := http.NewRequest("POST", posturl, bytes.NewBuffer(body))
+	if err != nil {
+		panic(err)
+	}
+
+	// Set HTTP request header
+	r.Header.Add("Content-Type", "application/json")
+
+	// Create client
+	client := &http.Client{}
+	res, err := client.Do(r) // make the POST request
+	if err != nil {
+		panic(err)
+	}
+
+	defer res.Body.Close()
+
+	// decode JSON
+	post := &Post{}
+	derr := json.NewDecoder(res.Body).Decode(post)
+	if derr != nil {
+		panic(derr)
+	}
+
+	// panic if returned code is not 201
+	if res.StatusCode != http.StatusCreated {
+		panic(res.Status)
+	}
+
+	// print newly created POST
+	fmt.Println("Id:", post.Id)
+	fmt.Println("Title:", post.Title)
+	fmt.Println("Body:", post.Body)
+	fmt.Println("UserId:", post.UserId)
+}
