@@ -3,59 +3,42 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 )
 
-/* names must start with a capital letter
-// struct tags define how the json is generated
-
-type myInt struct {
-	IntValue int
-}
-=> output: {"IntValue":1234}
-*/
-
-/*
-type myInt struct {
-	IntValue int `json:"intValue"`
-}
-=> output: {"intValue":1234}
-*/
-
-type myJSON struct {
-	IntValue        int       `json:"intValue"`
-	BoolValue       bool      `json:"boolValue"`
-	StringValue     string    `json:"stringValue"`
-	DateValue       time.Time `json:"datetValue"`
-	ObjectValue     *myObject `json:"objectValue"`
-	NullStringValue *string   `json:"nullStringValue,omitempty"` // string and int cant have value: nil, since "" and 0 are their empty values
-	NullIntValue    *int      `json:"nullIntValue"`              // it can either be type or nil, we need to make it a reference
-	EmptyString     string    `json:"emptyString,omitempty"`     // omitempty handles whether string is omitted or not
-} // of omitempty is added and the string is empty, it wont be output on the console!
-
-type myObject struct {
-	ArrayValue []int `json:"arrayValue"`
-}
-
 func main() {
-	otherInt := 4321
-	data := &myJSON{
-		IntValue:    1234,
-		BoolValue:   true,
-		StringValue: "hello!",
-		DateValue:   time.Date(2022, 3, 2, 9, 10, 0, 0, time.UTC),
-		ObjectValue: &myObject{
-			ArrayValue: []int{1, 2, 3, 4},
-		},
-		NullStringValue: nil,
-		NullIntValue:    &otherInt,
-	}
-
-	jsonData, err := json.Marshal(data)
+	jsonData := `
+		{
+			"intValue":1234,
+			"boolValue":true,
+			"stringValue":"hello!",
+			"dateValue":"2022-03-02T09:10:00Z",
+			"objectValue":{
+				"arrayValue":[1,2,3,4]
+			},
+			"nullStringValue":null,
+			"nullIntValue":null
+		}
+	`
+	var data map[string]interface{}
+	// takes raw json and unmarshals into go variables into data
+	err := json.Unmarshal([]byte(jsonData), &data)
 	if err != nil {
-		fmt.Printf("could not marshal json: %s\n", err)
+		fmt.Printf("Could not unmarshal JSON: %s\n", err)
 		return
 	}
 
-	fmt.Printf("json data: %s\n", jsonData)
+	fmt.Printf("JSON data: %v\n", data)
+
+	// make sure the data we got is what we were expecting
+	rawDateValue, ok := data["dateValue"] // is actually a string value
+	if !ok {                              // check if value is in the map
+		fmt.Printf("dateValue does not exist\n")
+		return
+	}
+	dateValue, ok := rawDateValue.(string)
+	if !ok {
+		fmt.Printf("dateValue is not a string\n")
+		return
+	}
+	fmt.Printf("Date value: %s\n", dateValue)
 }
