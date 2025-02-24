@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -14,7 +15,7 @@ func main() {
 	go func() {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			fmt.Printf("server: %s /\n", r.Method)
+			fmt.Fprintf(w, `{"message": "hello!"}`)
 		})
 
 		server := http.Server{
@@ -29,15 +30,32 @@ func main() {
 		}
 	}()
 
+	// create HTTP request
 	requestURL := fmt.Sprintf("http://localhost:%d", serverPort)
-	res, err := http.Get(requestURL)
+	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
 	if err != nil {
-		fmt.Printf("error making http request: %s\n", err)
+		fmt.Printf("client: could not create request: %s\n", err)
+		os.Exit(1)
+	}
+
+	// send the actual request
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		fmt.Printf("client: error making http request: %s\n", err)
 		os.Exit(1)
 	}
 
 	fmt.Printf("client: got response!\n")
 	fmt.Printf("client: status code: %d\n", res.StatusCode)
+
+	// read the HTTP response body
+	// ReadAll() reads from io.Reader, returns data as []byte or error
+	resBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		fmt.Printf("client: could not read response body: %s\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("client: response body: %s\n", resBody)
 
 	// sleep till server is rdy
 	time.Sleep(100 * time.Millisecond)
