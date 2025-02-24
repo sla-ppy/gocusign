@@ -3,7 +3,23 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 )
+
+type myJSON struct {
+	IntValue        int       `json:"intValue"`
+	BoolValue       bool      `json:"boolValue"`
+	StringValue     string    `json:"stringValue"`
+	DateValue       time.Time `json:"dateValue"`
+	ObjectValue     *myObject `json:"objectValue"`
+	NullStringValue *string   `json:"nullStringValue"`
+	NullIntValue    *int      `json:"nullIntValue"`
+	EmptyString     string    `json:"emptyString,omitempty"`
+}
+
+type myObject struct {
+	ArrayValue []int `json:"arrayValue"`
+}
 
 func main() {
 	jsonData := `
@@ -16,10 +32,13 @@ func main() {
 				"arrayValue":[1,2,3,4]
 			},
 			"nullStringValue":null,
-			"nullIntValue":null
+			"nullIntValue":null,
+			"extraValue":4321
 		}
 	`
-	var data map[string]interface{}
+	// any fields included in the JSON data that aren't defined on the struct are ignored by Go's JSON parser, and it will continue with the next item
+
+	var data *myJSON
 	// takes raw json and unmarshals into go variables into data
 	err := json.Unmarshal([]byte(jsonData), &data)
 	if err != nil {
@@ -27,18 +46,7 @@ func main() {
 		return
 	}
 
-	fmt.Printf("JSON data: %v\n", data)
-
-	// make sure the data we got is what we were expecting
-	rawDateValue, ok := data["dateValue"] // is actually a string value
-	if !ok {                              // check if value is in the map
-		fmt.Printf("dateValue does not exist\n")
-		return
-	}
-	dateValue, ok := rawDateValue.(string)
-	if !ok {
-		fmt.Printf("dateValue is not a string\n")
-		return
-	}
-	fmt.Printf("Date value: %s\n", dateValue)
+	fmt.Printf("JSON struct: %v#\n", data)
+	fmt.Printf("dateValue: %#v\n", data.DateValue)
+	fmt.Printf("objectValue: %#v\n", data.ObjectValue)
 }
