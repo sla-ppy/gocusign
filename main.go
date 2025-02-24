@@ -6,29 +6,56 @@ import (
 	"time"
 )
 
+/* names must start with a capital letter
+// struct tags define how the json is generated
+
+type myInt struct {
+	IntValue int
+}
+=> output: {"IntValue":1234}
+*/
+
+/*
+type myInt struct {
+	IntValue int `json:"intValue"`
+}
+=> output: {"intValue":1234}
+*/
+
+type myJSON struct {
+	IntValue        int       `json:"intValue"`
+	BoolValue       bool      `json:"boolValue"`
+	StringValue     string    `json:"stringValue"`
+	DateValue       time.Time `json:"datetValue"`
+	ObjectValue     *myObject `json:"objectValue"`
+	NullStringValue *string   `json:"nullStringValue,omitempty"` // string and int cant have value: nil, since "" and 0 are their empty values
+	NullIntValue    *int      `json:"nullIntValue"`              // it can either be type or nil, we need to make it a reference
+	EmptyString     string    `json:"emptyString,omitempty"`     // omitempty handles whether string is omitted or not
+} // of omitempty is added and the string is empty, it wont be output on the console!
+
+type myObject struct {
+	ArrayValue []int `json:"arrayValue"`
+}
+
 func main() {
-	// string translates directly into JSON object key
-	// interface{} - allows any data type
-	data := map[string]interface{}{
-		"intValue":    1234,
-		"boolValue":   true,
-		"stringValue": "hello!",
-		"objectValue": map[string]interface{}{
-			"arrayValue": []int{1, 2, 3, 4},
+	otherInt := 4321
+	data := &myJSON{
+		IntValue:    1234,
+		BoolValue:   true,
+		StringValue: "hello!",
+		DateValue:   time.Date(2022, 3, 2, 9, 10, 0, 0, time.UTC),
+		ObjectValue: &myObject{
+			ArrayValue: []int{1, 2, 3, 4},
 		},
-		"dateValue":       time.Date(2022, 3, 2, 9, 10, 0, 0, time.UTC),
-		"nullStringValue": nil,
-		"nullIntValue":    nil,
+		NullStringValue: nil,
+		NullIntValue:    &otherInt,
 	}
 
-	// Marshalling == Serialization
-	// Serialization: Transformation of program data in memory to an easily transferable format
-	// Ex.: Go data into JSON
-	jsonData, err := json.Marshal(data) // Marshal() automatically decides the type for an interface{} object
+	jsonData, err := json.Marshal(data)
 	if err != nil {
-		fmt.Printf("Could not marshal json: %s\n", err)
+		fmt.Printf("could not marshal json: %s\n", err)
 		return
 	}
 
-	fmt.Printf("Json data: %s\n", jsonData)
+	fmt.Printf("json data: %s\n", jsonData)
 }
