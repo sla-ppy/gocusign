@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -15,6 +17,21 @@ func main() {
 	go func() {
 		mux := http.NewServeMux()
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Printf("server: %s /\n", r.Method)
+			fmt.Printf("server: query id: %s\n", r.URL.Query().Get("id"))
+			// header information helps with identifying problems with the server
+			fmt.Printf("server: content-type: %s\n", r.Header.Get("content-type"))
+			fmt.Printf("server: headers:\n")
+			for headerName, headerValue := range r.Header {
+				fmt.Printf("\t%s = %s\n", headerName, strings.Join(headerValue, ", "))
+			}
+
+			reqBody, err := io.ReadAll(r.Body)
+			if err != nil {
+				fmt.Printf("server: could not read request body: %s\n", err)
+			}
+			fmt.Printf("server: request body: %s\n", reqBody)
+
 			fmt.Fprintf(w, `{"message": "hello!"}`)
 		})
 
@@ -30,9 +47,17 @@ func main() {
 		}
 	}()
 
+	// sleep till server is rdy
+	time.Sleep(100 * time.Millisecond)
+
+	// []byte since encoding/json in go returns []byte
+	jsonBody := []byte(`{"client_message": "hello, server!"}`)
+	// wrapper for jsonBody
+	bodyReader := bytes.NewReader(jsonBody) // exists so jsonBody can be the value as the request body, since http.Request needs a value that is io.Reader
+
 	// create HTTP request
-	requestURL := fmt.Sprintf("http://localhost:%d", serverPort)
-	req, err := http.NewRequest(http.MethodGet, requestURL, nil)
+	requestURL := fmt.Sprintf("http://localhost:%d?id=1234", serverPort)
+	req, err := http.NewRequest(http.MethodPost, requestURL, bodyReader)
 	if err != nil {
 		fmt.Printf("client: could not create request: %s\n", err)
 		os.Exit(1)
@@ -56,7 +81,4 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Printf("client: response body: %s\n", resBody)
-
-	// sleep till server is rdy
-	time.Sleep(100 * time.Millisecond)
 }
