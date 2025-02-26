@@ -42,8 +42,8 @@ func sessionInit() (string, string) {
 	}
 	fmt.Printf("Client: JSON data prepared:\n%s\n", jsonData)
 
-	const authToken = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOlsiY3JlYXRlX3Nlc3Npb24iXSwiaXNzIjoic2lnbi1iYWNrZW5kLXRlc3QiLCJleHAiOjE3NDM4NzQzNDYsImlhdCI6MTczOTU1NDM0Niwic3ViIjoiY29tcGFueTpiYWNrZW5kLWRldmVsb3Blci5jb21uaWNhLmlkIn0.x9qB3JtDtl-cGp9ijyjaL-lVuRSQsOk-KVibU8p3eyk"
 	// prepare post for /session/init
+	const authToken = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOlsiY3JlYXRlX3Nlc3Npb24iXSwiaXNzIjoic2lnbi1iYWNrZW5kLXRlc3QiLCJleHAiOjE3NDM4NzQzNDYsImlhdCI6MTczOTU1NDM0Niwic3ViIjoiY29tcGFueTpiYWNrZW5kLWRldmVsb3Blci5jb21uaWNhLmlkIn0.x9qB3JtDtl-cGp9ijyjaL-lVuRSQsOk-KVibU8p3eyk"
 	req, err := http.NewRequest("POST", baseUrl+"/init", bytes.NewBuffer(jsonData))
 	req.Header.Set("Content-Type", "application/json")   // tell the server we are sending json data
 	req.Header.Add("Accept", "application/json")         // accept tells the server we are expecting json back
@@ -130,7 +130,7 @@ func sessionAddDocument(sessionId string, bearerToken string) {
 	} else {
 		fmt.Printf("Client: File reading succesful!\n")
 	}
-	// copy?
+	// copy
 	_, err = io.Copy(fileWriter, fileReader)
 	if err != nil {
 		fmt.Printf("*ERR*: Could not copy Writer: %s\n", err)
@@ -138,6 +138,7 @@ func sessionAddDocument(sessionId string, bearerToken string) {
 	}
 	writer.Close()
 
+	// prepare post for /session/add_document
 	req, err := http.NewRequest("POST", baseUrl+"/add_document", formData)
 	req.Header.Set("Content-Type", writer.FormDataContentType()) // tell the server we are sending json data
 	req.Header.Set("Accept", "application/json")                 // accept tells the server we are expecting json back
@@ -206,7 +207,7 @@ func sessionCheckState(sessionId string, bearerToken string) string {
 	}
 	fmt.Printf("Client: JSON data prepared:\n%s\n", jsonData)
 
-	// prepare post for /session/init
+	// prepare post for /session/check_state
 	req, err := http.NewRequest("POST", baseUrl+"/check_state", bytes.NewBuffer(jsonData))
 	req.Header.Set("Content-Type", "application/json")     // tell the server we are sending json data
 	req.Header.Add("Accept", "application/json")           // accept tells the server we are expecting json back
@@ -275,7 +276,7 @@ func sessionReady(sessionId string, bearerToken string) string {
 	}
 	fmt.Printf("Client: JSON data prepared:\n%s\n", jsonData)
 
-	// prepare post for /session/init
+	// prepare post for /session/ready
 	req, err := http.NewRequest("POST", baseUrl+"/ready", bytes.NewBuffer(jsonData))
 	req.Header.Set("Content-Type", "application/json")     // tell the server we are sending json data
 	req.Header.Add("Accept", "application/json")           // accept tells the server we are expecting json back
