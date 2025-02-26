@@ -27,7 +27,7 @@ curl http://127.0.0.1:1234/     -> make HTTP GET request to test
 - We can check against the curl ran locally as the example shows:
 - This way essentially we are comparing the packet sent and the packet succesfully received by the server
 
-![image](demo/curl_comparision.png
+![image](demo/curl_comparision.png)
 
 
 - [Tutorials by Digitial Ocean on Golang](https://www.digitalocean.com/community/tutorials/how-to-use-json-in-go)
