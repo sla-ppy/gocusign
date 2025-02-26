@@ -103,8 +103,8 @@ we need this function to convert .pdf properly
 */
 func setPdfContentType(w *multipart.Writer, filename string) (io.Writer, error) {
 	h := make(textproto.MIMEHeader)
-	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s";`, "data"))
 	h.Set("Content-Type", "application/pdf")
+	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s";`, "data"))
 	return w.CreatePart(h)
 }
 
@@ -112,6 +112,7 @@ func sessionAddDocument(sessionId string, bearerToken string) string {
 	// multipart/form-data initialization
 	formData := &bytes.Buffer{} // we don't need to serialize here, since we already have a stream of bytes
 	writer := multipart.NewWriter(formData)
+	writer.SetBoundary("XXX")
 	writer.WriteField("session_id", sessionId)
 	writer.WriteField("description", "Example description")
 	writer.WriteField("filename", "output")
@@ -138,9 +139,9 @@ func sessionAddDocument(sessionId string, bearerToken string) string {
 	writer.Close()
 
 	req, err := http.NewRequest("POST", baseUrl+"/add_document", formData)
-	req.Header.Set("Content-Type", "multipart/form-data")  // tell the server we are sending json data
-	req.Header.Add("Accept", "application/json")           // accept tells the server we are expecting json back
-	req.Header.Add("Authorization", "Bearer "+bearerToken) // auth token is a must for all post requests for us
+	req.Header.Set("Content-Type", "multipart/form-data; boundary=\"XXX\"") // tell the server we are sending json data
+	req.Header.Set("Accept", "application/json")                            // accept tells the server we are expecting json back
+	req.Header.Set("Authorization", "Bearer "+bearerToken)                  // auth token is a must for all post requests for us
 
 	// make POST request
 	client := &http.Client{}
