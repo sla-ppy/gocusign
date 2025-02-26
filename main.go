@@ -4,15 +4,20 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"net/textproto"
+	"os"
 )
 
 const baseUrl = "https://sign-test.comnica.com/api/session"
 
+//const baseUrl = "http://127.0.0.1:1234/"
+
 func sessionInit() (string, string) {
 	// define JSON data structure
-	type sessionInitRequest struct {
+	type initRequest struct {
 		Company string `json:"company"` // string and int cant have value: nil, since "" and 0 are their empty values
 		CaseId  string `json:"case_id"` // it can either be type or nil, we need to make it a reference
 		Name    string `json:"name"`    // omitempty handles whether string is omitted or not
@@ -21,7 +26,7 @@ func sessionInit() (string, string) {
 	}
 
 	// initialize data to serialize
-	requestData := &sessionInitRequest{
+	requestData := &initRequest{
 		Company: "backend-developer.comnica.id",
 		CaseId:  "sla-ppy",
 		Name:    "Miklos Vida",
@@ -51,7 +56,13 @@ func sessionInit() (string, string) {
 		fmt.Println("*ERR*: Establishing /session/init failed! Status: ", resp.Status)
 		panic(err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("*ERR*: Closing the body failed: %s\n", err)
+			panic(err)
+		}
+	}(resp.Body)
 
 	// expected server response in json format
 	var initResult struct {
@@ -61,10 +72,10 @@ func sessionInit() (string, string) {
 
 	// check if OK, proceed with unmarshalling
 	if resp.StatusCode == http.StatusOK {
-		fmt.Printf("Succesful /session/init call! Status Code is OK: %d\n", resp.StatusCode)
+		fmt.Printf("Successful /session/init call! Status Code is OK: %d\n", resp.StatusCode)
 
 		// read response body
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			fmt.Printf("*ERR*: Cannot read response body: %s\n", err)
 			panic(err)
@@ -73,7 +84,7 @@ func sessionInit() (string, string) {
 		// unmarshal from go to json
 		err = json.Unmarshal(body, &initResult)
 		if err != nil {
-			fmt.Printf("*ERR*: Unmarshalling was unsuccesful: %s\n", err)
+			fmt.Printf("*ERR*: Unmarshalling was unsuccessful: %s\n", err)
 			panic(err)
 		}
 
@@ -85,15 +96,110 @@ func sessionInit() (string, string) {
 	return initResult.SessionId, initResult.BearerToken
 }
 
+/*
+since multipart.writer doesn't support specifying content type, and curl returned the following result for sending .pdf data:
+-F 'data=@input.pdf;type=application/pdf' \
+we need this function to convert .pdf properly
+*/
+func setPdfContentType(w *multipart.Writer, filename string) (io.Writer, error) {
+	h := make(textproto.MIMEHeader)
+	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s";`, "data"))
+	h.Set("Content-Type", "application/pdf")
+	return w.CreatePart(h)
+}
+
+func sessionAddDocument(sessionId string, bearerToken string) string {
+	// multipart/form-data initialization
+	formData := &bytes.Buffer{} // we don't need to serialize here, since we already have a stream of bytes
+	writer := multipart.NewWriter(formData)
+	writer.WriteField("session_id", sessionId)
+	writer.WriteField("description", "Example description")
+	writer.WriteField("filename", "output")
+	writer.WriteField("document_type", "user_document")
+	fileWriter, err := setPdfContentType(writer, "resources/vevokeszulek.pdf")
+	if err != nil {
+		fmt.Printf("*ERR*: Could not set .pdf content type: %s\n", err)
+		panic(err)
+	}
+	// check if file can be opened
+	fileReader, err := os.Open("resources/vevokeszulek.pdf")
+	if err != nil {
+		fmt.Printf("*ERR*: Could not open .pdf file: %s\n", err)
+		panic(err)
+	} else {
+		fmt.Printf("Client: File reading succesful!\n")
+	}
+	// copy?
+	_, err = io.Copy(fileWriter, fileReader)
+	if err != nil {
+		fmt.Printf("*ERR*: Could not copy Writer: %s\n", err)
+		panic(err)
+	}
+	writer.Close()
+
+	req, err := http.NewRequest("POST", baseUrl+"/add_document", formData)
+	req.Header.Set("Content-Type", "multipart/form-data")  // tell the server we are sending json data
+	req.Header.Add("Accept", "application/json")           // accept tells the server we are expecting json back
+	req.Header.Add("Authorization", "Bearer "+bearerToken) // auth token is a must for all post requests for us
+
+	// make POST request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("*ERR*: Establishing /session/add_document failed! Status: %s\n", err)
+		panic(err)
+	}
+	defer func(Body io.ReadCloser) { // defer = destructor in terms of working
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("*ERR*: Closing the body failed: %s\n", err)
+			panic(err)
+		}
+	}(resp.Body)
+
+	// expected server response in json format
+	var addDocumentResult struct {
+		DocumentId string `json:"document_id"`
+	}
+
+	// check if OK, proceed with unmarshalling
+	if resp.StatusCode == http.StatusOK {
+		fmt.Printf("Succesful /session/add_document call! Status Code is OK: %d\n", resp.StatusCode)
+		fmt.Printf("{\"document_id\":\"%s\":\"}\n", addDocumentResult.DocumentId)
+	} else {
+		fmt.Printf("*ERR*: Status Code is not OK: %d\n", resp.StatusCode)
+		// dont panic, we might get additional info back to debug
+	}
+
+	// read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("*ERR*: Cannot read response body: %s\n", err)
+		panic(err)
+	}
+
+	// unmarshal from go to json
+	err = json.Unmarshal(body, &addDocumentResult)
+	if err != nil {
+		fmt.Printf("*ERR*: Unmarshalling was unsuccesful: %s\n", err)
+		panic(err)
+	}
+
+	return addDocumentResult.DocumentId
+}
+
+func sessionCheckState() (string, string) {
+	return "", ""
+}
+
+func sessionReady() (string, string) {
+	return "", ""
+}
+
 func main() {
 	sessionId, bearerToken := sessionInit()
+	documentId := sessionAddDocument(sessionId, bearerToken)
+	//documentId := sessionAddDocument("hello1", "hello2")
 
-	fmt.Println("Session ID:", sessionId)
-	fmt.Println("Bearer Token:", bearerToken)
-
-	// http.Response fields i can use
-	//fmt.Println("Response Status:", resp.Status)
-	//fmt.Println("Response Headers:", resp.Header)
-	//fmt.Println("Response Body:", resp.Body)
-	//fmt.Println("Response Body:", resp)
+	fmt.Printf("Document ID: %d\n", documentId)
 }
