@@ -65,7 +65,7 @@ func sessionInit() (string, string) {
 	}(resp.Body)
 
 	// expected server response in json format
-	var initResult struct {
+	var Result struct {
 		SessionId   string `json:"session_id"`
 		BearerToken string `json:"bearer_token"`
 	}
@@ -82,18 +82,18 @@ func sessionInit() (string, string) {
 		}
 
 		// unmarshal from go to json
-		err = json.Unmarshal(body, &initResult)
+		err = json.Unmarshal(body, &Result)
 		if err != nil {
 			fmt.Printf("*ERR*: Unmarshalling was unsuccessful: %s\n", err)
 			panic(err)
 		}
 
-		fmt.Printf("{\"session_id\":\"%s\",\"bearer_token\":\"%s\"}\n", initResult.SessionId, initResult.BearerToken)
+		fmt.Printf("{\"session_id\":\"%s\",\"bearer_token\":\"%s\"}\n", Result.SessionId, Result.BearerToken)
 	} else {
 		fmt.Printf("*ERR*: Status Code is not OK: %d\n", resp.StatusCode)
 		panic(err)
 	}
-	return initResult.SessionId, initResult.BearerToken
+	return Result.SessionId, Result.BearerToken
 }
 
 /*
@@ -101,6 +101,7 @@ since multipart.writer doesn't support specifying content type, and curl returne
 -F 'data=@input.pdf;type=application/pdf' \
 we need this function to convert .pdf properly
 */
+
 func setPdfContentType(w *multipart.Writer, filename string) (io.Writer, error) {
 	h := make(textproto.MIMEHeader)
 	h.Set("Content-Type", "application/pdf")
@@ -108,7 +109,7 @@ func setPdfContentType(w *multipart.Writer, filename string) (io.Writer, error) 
 	return w.CreatePart(h)
 }
 
-func sessionAddDocument(sessionId string, bearerToken string) int {
+func sessionAddDocument(sessionId string, bearerToken string) {
 	// multipart/form-data initialization
 	formData := &bytes.Buffer{} // we don't need to serialize here, since we already have a stream of bytes
 	writer := multipart.NewWriter(formData)
@@ -166,7 +167,7 @@ func sessionAddDocument(sessionId string, bearerToken string) int {
 	}
 
 	// expected server response in json format
-	var addDocumentResult struct {
+	var Result struct {
 		DocumentId int `json:"document_id"`
 	}
 
@@ -178,27 +179,189 @@ func sessionAddDocument(sessionId string, bearerToken string) int {
 	}
 
 	// unmarshal from go to json
-	err = json.Unmarshal(body, &addDocumentResult)
+	err = json.Unmarshal(body, &Result)
 	if err != nil {
 		fmt.Printf("*ERR*: Unmarshalling was unsuccesful: %s\n", err)
 		panic(err)
 	}
 
-	return addDocumentResult.DocumentId
+	fmt.Printf("{\"document_id\":\"%d\"}\n", Result.DocumentId)
 }
 
-func sessionCheckState() (string, string) {
-	return "", ""
+func sessionCheckState(sessionId string, bearerToken string) string {
+	type initRequest struct {
+		SessionId string `json:"session_id"`
+	}
+
+	// initialize data to serialize
+	requestData := &initRequest{
+		SessionId: sessionId,
+	}
+
+	// serialize from Go data to JSON
+	jsonData, err := json.Marshal(requestData)
+	if err != nil {
+		fmt.Printf("*ERR*: Could not marshal JSON: %s\n", err)
+		panic(err)
+	}
+	fmt.Printf("Client: JSON data prepared:\n%s\n", jsonData)
+
+	// prepare post for /session/init
+	req, err := http.NewRequest("POST", baseUrl+"/check_state", bytes.NewBuffer(jsonData))
+	req.Header.Set("Content-Type", "application/json")     // tell the server we are sending json data
+	req.Header.Add("Accept", "application/json")           // accept tells the server we are expecting json back
+	req.Header.Add("Authorization", "Bearer "+bearerToken) // auth token is a must for all post requests for us
+
+	// make POST request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("*ERR*: Establishing /session/init failed! Status: ", resp.Status)
+		panic(err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("*ERR*: Closing the body failed: %s\n", err)
+			panic(err)
+		}
+	}(resp.Body)
+
+	// expected server response in json format
+	var Result struct {
+		State string `json:"state"`
+	}
+
+	// check if OK, proceed with unmarshalling
+	if resp.StatusCode == http.StatusOK {
+		// read response body
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("*ERR*: Cannot read response body: %s\n", err)
+			panic(err)
+		}
+
+		// unmarshal from go to json
+		err = json.Unmarshal(body, &Result)
+		if err != nil {
+			fmt.Printf("*ERR*: Unmarshalling was unsuccessful: %s\n", err)
+			panic(err)
+		}
+	} else {
+		fmt.Printf("*ERR*: Status Code is not OK: %d\n", resp.StatusCode)
+		panic(err)
+	}
+	return Result.State
 }
 
-func sessionReady() (string, string) {
-	return "", ""
+func sessionReady(sessionId string, bearerToken string) string {
+	type initRequest struct {
+		SessionId string `json:"session_id"`
+	}
+
+	// initialize data to serialize
+	requestData := &initRequest{
+		SessionId: sessionId,
+	}
+
+	// serialize from Go data to JSON
+	jsonData, err := json.Marshal(requestData)
+	if err != nil {
+		fmt.Printf("*ERR*: Could not marshal JSON: %s\n", err)
+		panic(err)
+	}
+	fmt.Printf("Client: JSON data prepared:\n%s\n", jsonData)
+
+	// prepare post for /session/init
+	req, err := http.NewRequest("POST", baseUrl+"/ready", bytes.NewBuffer(jsonData))
+	req.Header.Set("Content-Type", "application/json")     // tell the server we are sending json data
+	req.Header.Add("Accept", "application/json")           // accept tells the server we are expecting json back
+	req.Header.Add("Authorization", "Bearer "+bearerToken) // auth token is a must for all post requests for us
+
+	// make POST request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("*ERR*: Establishing /session/ready failed! Status: ", resp.Status)
+		panic(err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("*ERR*: Closing the body failed: %s\n", err)
+			panic(err)
+		}
+	}(resp.Body)
+
+	// expected server response in json format
+	var Result struct {
+		SessionId string `json:"session_id"`
+	}
+
+	// check if OK, proceed with unmarshalling
+	if resp.StatusCode == http.StatusOK {
+		// read response body
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("*ERR*: Cannot read response body: %s\n", err)
+			panic(err)
+		}
+
+		// unmarshal from go to json
+		err = json.Unmarshal(body, &Result)
+		if err != nil {
+			fmt.Printf("*ERR*: Unmarshalling was unsuccessful: %s\n", err)
+			panic(err)
+		}
+	} else {
+		fmt.Printf("*ERR*: Status Code is not OK: %d\n", resp.StatusCode)
+		panic(err)
+	}
+	return Result.SessionId
 }
 
 func main() {
+	// 1. Init session
 	sessionId, bearerToken := sessionInit()
-	documentId := sessionAddDocument(sessionId, bearerToken)
-	//documentId := sessionAddDocument("hello1", "hello2")
+	fmt.Printf("\n")
 
-	fmt.Printf("Document ID: %d\n", documentId)
+	state := sessionCheckState(sessionId, bearerToken)
+	if state != "started" {
+		fmt.Printf("*ERR*: Session state is incorrect, expected state: started, result: %d\n", state)
+		panic(1)
+	} else {
+		fmt.Printf("State: %s\n", state)
+		fmt.Printf("\n")
+	}
+
+	// 2. Add documents
+	sessionAddDocument(sessionId, bearerToken)
+	fmt.Printf("\n")
+
+	state = sessionCheckState(sessionId, bearerToken)
+	if state != "started" {
+		fmt.Printf("*ERR*: Session state is incorrect, expected state: documents_added, result: %d\n", state)
+		panic(1)
+	} else {
+		fmt.Printf("State: %s\n", state)
+		fmt.Printf("\n")
+	}
+
+	// 3. Ready session
+	sessionReady(sessionId, bearerToken)
+	fmt.Printf("\n")
+
+	state = sessionCheckState(sessionId, bearerToken)
+	if state != "documents_added" {
+		fmt.Printf("*ERR*: Session state is incorrect, expected state: documents_added, result: %d\n", state)
+		panic(1)
+	} else {
+		fmt.Printf("State: %s\n", state)
+		fmt.Printf("\n")
+	}
+	fmt.Printf("\n")
+
+	fmt.Printf("---Program complete---\n")
+	fmt.Printf("Session ID: %s\n", sessionId)
+	fmt.Printf("Link for the user: %s\n", "https://sign-test.comnica.com/"+sessionId)
 }

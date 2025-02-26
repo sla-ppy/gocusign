@@ -22,6 +22,14 @@ Terminal #1
 curl http://127.0.0.1:1234/     -> make HTTP GET request to test
 ```
 
+## Using the API's curl commands and comparing it locally
+- If the API documentation includes example on the Curl on succesful api call in the correct format
+- We can check against the curl ran locally as the example shows:
+- This way essentially we are comparing the packet sent and the packet succesfully received by the server
+
+![image](demo/curl_comparision.png
+
+
 - [Tutorials by Digitial Ocean on Golang](https://www.digitalocean.com/community/tutorials/how-to-use-json-in-go)
 - [Reqbin for HTTP theory and more](https://reqbin.com/)
 - [Swagger for viewing API docs such as .yaml (F1 in VScode)](https://swagger.io/)
