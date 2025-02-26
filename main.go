@@ -104,20 +104,19 @@ we need this function to convert .pdf properly
 func setPdfContentType(w *multipart.Writer, filename string) (io.Writer, error) {
 	h := make(textproto.MIMEHeader)
 	h.Set("Content-Type", "application/pdf")
-	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s";`, "data"))
+	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, "data", filename))
 	return w.CreatePart(h)
 }
 
-func sessionAddDocument(sessionId string, bearerToken string) string {
+func sessionAddDocument(sessionId string, bearerToken string) int {
 	// multipart/form-data initialization
 	formData := &bytes.Buffer{} // we don't need to serialize here, since we already have a stream of bytes
 	writer := multipart.NewWriter(formData)
-	writer.SetBoundary("XXX")
 	writer.WriteField("session_id", sessionId)
 	writer.WriteField("description", "Example description")
-	writer.WriteField("filename", "output")
+	writer.WriteField("filename", "output.pdf")
 	writer.WriteField("document_type", "user_document")
-	fileWriter, err := setPdfContentType(writer, "resources/vevokeszulek.pdf")
+	fileWriter, err := setPdfContentType(writer, "vevokeszulek.pdf")
 	if err != nil {
 		fmt.Printf("*ERR*: Could not set .pdf content type: %s\n", err)
 		panic(err)
@@ -139,9 +138,9 @@ func sessionAddDocument(sessionId string, bearerToken string) string {
 	writer.Close()
 
 	req, err := http.NewRequest("POST", baseUrl+"/add_document", formData)
-	req.Header.Set("Content-Type", "multipart/form-data; boundary=\"XXX\"") // tell the server we are sending json data
-	req.Header.Set("Accept", "application/json")                            // accept tells the server we are expecting json back
-	req.Header.Set("Authorization", "Bearer "+bearerToken)                  // auth token is a must for all post requests for us
+	req.Header.Set("Content-Type", writer.FormDataContentType()) // tell the server we are sending json data
+	req.Header.Set("Accept", "application/json")                 // accept tells the server we are expecting json back
+	req.Header.Set("Authorization", "Bearer "+bearerToken)       // auth token is a must for all post requests for us
 
 	// make POST request
 	client := &http.Client{}
@@ -158,18 +157,17 @@ func sessionAddDocument(sessionId string, bearerToken string) string {
 		}
 	}(resp.Body)
 
-	// expected server response in json format
-	var addDocumentResult struct {
-		DocumentId string `json:"document_id"`
-	}
-
 	// check if OK, proceed with unmarshalling
 	if resp.StatusCode == http.StatusOK {
 		fmt.Printf("Succesful /session/add_document call! Status Code is OK: %d\n", resp.StatusCode)
-		fmt.Printf("{\"document_id\":\"%s\":\"}\n", addDocumentResult.DocumentId)
 	} else {
 		fmt.Printf("*ERR*: Status Code is not OK: %d\n", resp.StatusCode)
 		// dont panic, we might get additional info back to debug
+	}
+
+	// expected server response in json format
+	var addDocumentResult struct {
+		DocumentId int `json:"document_id"`
 	}
 
 	// read response body
