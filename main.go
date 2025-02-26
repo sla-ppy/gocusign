@@ -64,36 +64,37 @@ func sessionInit() (string, string) {
 		}
 	}(resp.Body)
 
-	// expected server response in json format
-	var Result struct {
-		SessionId   string `json:"session_id"`
-		BearerToken string `json:"bearer_token"`
-	}
-
 	// check if OK, proceed with unmarshalling
 	if resp.StatusCode == http.StatusOK {
 		fmt.Printf("Successful /session/init call! Status Code is OK: %d\n", resp.StatusCode)
-
-		// read response body
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			fmt.Printf("*ERR*: Cannot read response body: %s\n", err)
-			panic(err)
-		}
-
-		// unmarshal from go to json
-		err = json.Unmarshal(body, &Result)
-		if err != nil {
-			fmt.Printf("*ERR*: Unmarshalling was unsuccessful: %s\n", err)
-			panic(err)
-		}
-
-		fmt.Printf("{\"session_id\":\"%s\",\"bearer_token\":\"%s\"}\n", Result.SessionId, Result.BearerToken)
 	} else {
 		fmt.Printf("*ERR*: Status Code is not OK: %d\n", resp.StatusCode)
 		panic(err)
 	}
-	return Result.SessionId, Result.BearerToken
+
+	// read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("*ERR*: Cannot read response body: %s\n", err)
+		panic(err)
+	}
+
+	// expected server response in json format
+	var respData struct {
+		SessionId   string `json:"session_id"`
+		BearerToken string `json:"bearer_token"`
+	}
+
+	// unmarshal from go to json
+	err = json.Unmarshal(body, &respData)
+	if err != nil {
+		fmt.Printf("*ERR*: Unmarshalling was unsuccessful: %s\n", err)
+		panic(err)
+	}
+
+	fmt.Printf("{\"session_id\":\"%s\",\"bearer_token\":\"%s\"}\n", respData.SessionId, respData.BearerToken)
+
+	return respData.SessionId, respData.BearerToken
 }
 
 /*
@@ -101,7 +102,6 @@ since multipart.writer doesn't support specifying content type, and curl returne
 -F 'data=@input.pdf;type=application/pdf' \
 we need this function to convert .pdf properly
 */
-
 func setPdfContentType(w *multipart.Writer, filename string) (io.Writer, error) {
 	h := make(textproto.MIMEHeader)
 	h.Set("Content-Type", "application/pdf")
@@ -163,12 +163,7 @@ func sessionAddDocument(sessionId string, bearerToken string) {
 		fmt.Printf("Succesful /session/add_document call! Status Code is OK: %d\n", resp.StatusCode)
 	} else {
 		fmt.Printf("*ERR*: Status Code is not OK: %d\n", resp.StatusCode)
-		// dont panic, we might get additional info back to debug
-	}
-
-	// expected server response in json format
-	var Result struct {
-		DocumentId int `json:"document_id"`
+		// don't panic, we might get additional info back to debug
 	}
 
 	// read response body
@@ -178,14 +173,19 @@ func sessionAddDocument(sessionId string, bearerToken string) {
 		panic(err)
 	}
 
+	// expected server response in json format
+	var respData struct {
+		DocumentId int `json:"document_id"`
+	}
+
 	// unmarshal from go to json
-	err = json.Unmarshal(body, &Result)
+	err = json.Unmarshal(body, &respData)
 	if err != nil {
 		fmt.Printf("*ERR*: Unmarshalling was unsuccesful: %s\n", err)
 		panic(err)
 	}
 
-	fmt.Printf("{\"document_id\":\"%d\"}\n", Result.DocumentId)
+	fmt.Printf("{\"document_id\":\"%d\"}\n", respData.DocumentId)
 }
 
 func sessionCheckState(sessionId string, bearerToken string) string {
@@ -227,31 +227,34 @@ func sessionCheckState(sessionId string, bearerToken string) string {
 		}
 	}(resp.Body)
 
-	// expected server response in json format
-	var Result struct {
-		State string `json:"state"`
-	}
-
 	// check if OK, proceed with unmarshalling
 	if resp.StatusCode == http.StatusOK {
-		// read response body
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			fmt.Printf("*ERR*: Cannot read response body: %s\n", err)
-			panic(err)
-		}
-
-		// unmarshal from go to json
-		err = json.Unmarshal(body, &Result)
-		if err != nil {
-			fmt.Printf("*ERR*: Unmarshalling was unsuccessful: %s\n", err)
-			panic(err)
-		}
+		fmt.Printf("Succesful /session/check_state call! Status Code is OK: %d\n", resp.StatusCode)
 	} else {
 		fmt.Printf("*ERR*: Status Code is not OK: %d\n", resp.StatusCode)
 		panic(err)
 	}
-	return Result.State
+
+	// read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("*ERR*: Cannot read response body: %s\n", err)
+		panic(err)
+	}
+
+	// expected server response in json format
+	var respData struct {
+		State string `json:"state"`
+	}
+
+	// unmarshal from go to json
+	err = json.Unmarshal(body, &respData)
+	if err != nil {
+		fmt.Printf("*ERR*: Unmarshalling was unsuccessful: %s\n", err)
+		panic(err)
+	}
+
+	return respData.State
 }
 
 func sessionReady(sessionId string, bearerToken string) string {
@@ -293,31 +296,34 @@ func sessionReady(sessionId string, bearerToken string) string {
 		}
 	}(resp.Body)
 
-	// expected server response in json format
-	var Result struct {
-		SessionId string `json:"session_id"`
-	}
-
 	// check if OK, proceed with unmarshalling
 	if resp.StatusCode == http.StatusOK {
-		// read response body
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			fmt.Printf("*ERR*: Cannot read response body: %s\n", err)
-			panic(err)
-		}
-
-		// unmarshal from go to json
-		err = json.Unmarshal(body, &Result)
-		if err != nil {
-			fmt.Printf("*ERR*: Unmarshalling was unsuccessful: %s\n", err)
-			panic(err)
-		}
+		fmt.Printf("Succesful /session/ready call! Status Code is OK: %d\n", resp.StatusCode)
 	} else {
 		fmt.Printf("*ERR*: Status Code is not OK: %d\n", resp.StatusCode)
 		panic(err)
 	}
-	return Result.SessionId
+
+	// read response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("*ERR*: Cannot read response body: %s\n", err)
+		panic(err)
+	}
+
+	// expected server response in json format
+	var respData struct {
+		SessionId string `json:"session_id"`
+	}
+
+	// unmarshal from go to json
+	err = json.Unmarshal(body, &respData)
+	if err != nil {
+		fmt.Printf("*ERR*: Unmarshalling was unsuccessful: %s\n", err)
+		panic(err)
+	}
+
+	return respData.SessionId
 }
 
 func main() {
@@ -327,7 +333,7 @@ func main() {
 
 	state := sessionCheckState(sessionId, bearerToken)
 	if state != "started" {
-		fmt.Printf("*ERR*: Session state is incorrect, expected state: started, result: %d\n", state)
+		fmt.Printf("*ERR*: Session state is incorrect, expected state: started, result: %s\n", state)
 		panic(1)
 	} else {
 		fmt.Printf("State: %s\n", state)
@@ -340,7 +346,7 @@ func main() {
 
 	state = sessionCheckState(sessionId, bearerToken)
 	if state != "started" {
-		fmt.Printf("*ERR*: Session state is incorrect, expected state: documents_added, result: %d\n", state)
+		fmt.Printf("*ERR*: Session state is incorrect, expected state: documents_added, result: %s\n", state)
 		panic(1)
 	} else {
 		fmt.Printf("State: %s\n", state)
@@ -353,7 +359,7 @@ func main() {
 
 	state = sessionCheckState(sessionId, bearerToken)
 	if state != "documents_added" {
-		fmt.Printf("*ERR*: Session state is incorrect, expected state: documents_added, result: %d\n", state)
+		fmt.Printf("*ERR*: Session state is incorrect, expected state: documents_added, result: %s\n", state)
 		panic(1)
 	} else {
 		fmt.Printf("State: %s\n", state)
@@ -364,4 +370,5 @@ func main() {
 	fmt.Printf("---Program complete---\n")
 	fmt.Printf("Session ID: %s\n", sessionId)
 	fmt.Printf("Link for the user: %s\n", "https://sign-test.comnica.com/"+sessionId)
+	fmt.Printf("---Program complete---\n")
 }
